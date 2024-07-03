@@ -41,39 +41,54 @@ def check_and_create_image(dic):
 
     if filetype.is_image(img_bytes) == True:
         
-        if dic['title'] == '':
-            dic['title'] = 'untitled'
+        title = dic['title']
         
-        if os.path.exists('gallery/'+dic['title']+'.'+dic['extension']) == False:
-            with open('gallery/'+dic['title']+'.'+dic['extension'], 'wb') as img_file:
+        for i in range(len(dic['title'])):
+            if dic['title'][i] in '\/:*?"<>|':
+                title = title.replace(dic['title'][i], '')
+        
+        if title == '':
+            title = 'untitled'
+
+        if os.path.exists('gallery') == False:
+            os.mkdir('gallery')
+
+        if os.path.exists('gallery/'+title+'.'+dic['extension']) == False:
+            with open('gallery/'+title+'.'+dic['extension'], 'wb') as img_file:
                 img_file.write(img_bytes)
                 return 'Created', 201
         else:
             i = 1
-            while os.path.exists('gallery/'+dic['title']+' (%s).'%i+dic['extension']) == True:
+            while os.path.exists('gallery/'+title+' (%s).'%i+dic['extension']) == True:
                 i += 1
-            with open('gallery/'+dic['title']+' (%s).'%i+dic['extension'], 'wb') as img_file:
+            with open('gallery/'+title+' (%s).'%i+dic['extension'], 'wb') as img_file:
                 img_file.write(img_bytes)
                 return 'Created', 201
+    
     else:
         return 'Unsupported Media Type', 415
 
 
-
-
-    
 image_base64 = ''
 @app.route('/image', methods=['POST'])
 def post_img():
     global image_base64
     data = f.request.get_json()
     image_base64 += data['chunk']
+
     if data['id'] == 1:
+        first_chunk = eval(image_base64 + '"}')
+        size = first_chunk['size'][:-3]
+        if float(size) > 1024:
+            image_base64 = ''
+            return 'Request Header Fields Too Large', 431
+
 
     if data['id'] == data['total']:
         image_data = eval(image_base64)
         image_base64 = ''
         return check_and_create_image(image_data)
+    
     return 'accepted', 202
 
 
