@@ -2,6 +2,7 @@ import flask as f
 import base64
 import filetype
 import os
+from datetime import datetime
 
 PORT = 3000
 HOST = 'localhost'
@@ -30,7 +31,8 @@ def send_img():
 
 
 
-def check_and_create_image(dic):
+def check_and_create_image(dic: dict):
+
     img_string = dic['base64']
     for i in range(len(img_string)):
             if img_string[i] == ',':
@@ -38,35 +40,50 @@ def check_and_create_image(dic):
                 break
     img_bytes = base64.b64decode(img_string)
 
+    title = set_name_of_image(dic['title'])
 
     if filetype.is_image(img_bytes) == True:
         
-        title = dic['title']
-        
-        for i in range(len(dic['title'])):
-            if dic['title'][i] in '\/:*?"<>|':
-                title = title.replace(dic['title'][i], '')
-        
-        if title == '':
-            title = 'untitled'
-
         if os.path.exists('gallery') == False:
             os.mkdir('gallery')
 
-        if os.path.exists('gallery/'+title+'.'+dic['extension']) == False:
-            with open('gallery/'+title+'.'+dic['extension'], 'wb') as img_file:
+        if os.path.exists('gallery/'+ title + '.' + dic['extension']) == False:
+            with open('gallery/' + title + '.' + dic['extension'], 'wb') as img_file:
                 img_file.write(img_bytes)
+                status_log(title + '.' + dic['extension'], 201, 'Created')
                 return 'Created', 201
         else:
             i = 1
-            while os.path.exists('gallery/'+title+' (%s).'%i+dic['extension']) == True:
+            while os.path.exists('gallery/' + title + ' (%s).' %i + dic['extension']) == True:
                 i += 1
-            with open('gallery/'+title+' (%s).'%i+dic['extension'], 'wb') as img_file:
+            with open('gallery/' + title + ' (%s).' %i + dic['extension'], 'wb') as img_file:
                 img_file.write(img_bytes)
+                status_log(title + '.' + dic['extension'], 201, 'Created')
                 return 'Created', 201
     
     else:
+        status_log(title + '.' + dic['extension'], 415, 'Unsupported Media Type')
         return 'Unsupported Media Type', 415
+
+
+def status_log(filename, status, message):
+    with open('logs.txt', 'a') as file:
+        file.write(str(datetime.now()) + ' Имя файла: ' + filename + ' Статус сервера: ' + str(status) +' ' + message + '\n')
+
+
+def set_name_of_image(title):
+    name = title
+    
+    for i in range(len(title)):
+        if title[i] in '\:*?"<>|/':
+            name = name.replace(title[i], '')
+        
+    if name == '':
+        name = 'untitled'
+    
+    return name
+
+
 
 
 image_base64 = ''
@@ -78,9 +95,13 @@ def post_img():
 
     if data['id'] == 1:
         first_chunk = eval(image_base64 + '"}')
+        first_chunk['title'] = set_name_of_image(first_chunk['title'])
+
+
         size = first_chunk['size'][:-3]
         if float(size) > 1024:
             image_base64 = ''
+            status_log(first_chunk['title'] + '.' + first_chunk['extension'], 431, 'Request Header Fields Too Large')
             return 'Request Header Fields Too Large', 431
 
 
@@ -89,7 +110,7 @@ def post_img():
         image_base64 = ''
         return check_and_create_image(image_data)
     
-    return 'accepted', 202
+    return 'Accepted', 202
 
 
 
