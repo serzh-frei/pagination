@@ -1,0 +1,48 @@
+body{
+    margin: 0;
+}
+
+#root, .image-discript-block, .img-load-block{
+    display: flex;
+    flex-direction: column;
+}
+
+#root, .image-card, .img-load-block{
+    align-items: center;
+    justify-content: center;
+}
+
+#root{
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.image-card{
+    display: flex;
+    flex-direction: row;
+    border: 1px solid gray;
+    padding: 25px;
+    border-radius: 15px;
+}
+
+.img-load-block{
+    width: 200px;
+    height: 200px;
+}
+
+#image{
+    width: 150px
+}
+
+.server-response-block, .image-discript-block > span{
+    margin-top: 20px;
+}
+
+.serv-info{
+    font-weight: bolder;
+}
+
+.img-info, #send-file{
+    margin-top: 20px;
+}
