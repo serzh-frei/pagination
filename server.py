@@ -1,13 +1,33 @@
 import flask as f
-import base64
 import filetype
 import os
+import psycopg2
+
+import base64
 from datetime import datetime
+
 
 PORT = 3000
 HOST = 'localhost'
 
+DATABASE_NAME = 'postgres'
+DATABASE_USER = 'postgres'
+DATABASE_PASSWORD = '123'
+DATABASE_HOST = 'localhost'
+DATABASE_PORT = '3001'
+
 app = f.Flask(__name__)
+
+sql_connection = psycopg2.connect(database=DATABASE_NAME, user=DATABASE_USER, password=DATABASE_PASSWORD, host=DATABASE_HOST, port=DATABASE_PORT)
+with sql_connection.cursor() as cursor:
+    cursor.execute('''CREATE TABLE IF NOT EXISTS downloads_table (
+                   ID integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                   TITLE varchar,
+                   TAGS varchar,
+                   DESCRIPTION varchar,
+                   PATH varchar)''')
+    sql_connection.commit()
+
 
 
 @app.route('/')
@@ -47,18 +67,24 @@ def check_and_create_image(dic: dict):
         if os.path.exists('gallery') == False:
             os.mkdir('gallery')
 
-        if os.path.exists('gallery/'+ title + '.' + dic['extension']) == False:
-            with open('gallery/' + title + '.' + dic['extension'], 'wb') as img_file:
+        path = 'gallery/'+ title + '.' + dic['extension']
+
+        if os.path.exists(path) == False:
+            with open(path, 'wb') as img_file:
                 img_file.write(img_bytes)
                 status_log(title + '.' + dic['extension'], 201, 'Created')
+                add_sql_record(title, dic['tags'], dic['description'], path)
                 return 'Created', 201
         else:
             i = 1
-            while os.path.exists('gallery/' + title + ' (%s).' %i + dic['extension']) == True:
+            numbered_path = 'gallery/' + title + ' (%s).' %i + dic['extension']
+            while os.path.exists(numbered_path) == True:
                 i += 1
-            with open('gallery/' + title + ' (%s).' %i + dic['extension'], 'wb') as img_file:
+                numbered_path = 'gallery/' + title + ' (%s).' %i + dic['extension']
+            with open(numbered_path, 'wb') as img_file:
                 img_file.write(img_bytes)
                 status_log(title + '.' + dic['extension'], 201, 'Created')
+                add_sql_record(title, dic['tags'], dic['description'], numbered_path)
                 return 'Created', 201
     
     else:
@@ -83,6 +109,13 @@ def set_name_of_image(title):
     
     return name
 
+def add_sql_record(title, tags, description, path):
+    global sql_connection
+    with sql_connection.cursor() as cursor:
+        cursor.execute(f'''INSERT INTO downloads_table (title, tags, description, path)
+                        VALUES ('{title}', '{tags}', '{description}', '{path}')
+                        ''')
+        sql_connection.commit()
 
 
 
@@ -96,7 +129,6 @@ def post_img():
     if data['id'] == 1:
         first_chunk = eval(image_base64 + '"}')
         first_chunk['title'] = set_name_of_image(first_chunk['title'])
-
 
         size = first_chunk['size'][:-3]
         if float(size) > 1024:
