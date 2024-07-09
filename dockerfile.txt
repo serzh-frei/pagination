@@ -1,0 +1,25 @@
+# Базовый образ
+FROM python:3.12
+
+# Устанавливаем необходимые зависимости
+RUN pip install flask
+RUN pip install filetype
+RUN pip install psycopg2-binary
+RUN apt-get update && apt-get install -y podman
+
+# Копируем приложение в контейнер
+COPY . /pagination
+
+# Задаем рабочую директорию
+WORKDIR /pagination
+
+ENV DATABASE_NAME=postgres
+ENV DATABASE_USER=postgres
+ENV DATABASE_PASSWORD=123
+ENV DATABASE_HOST=postgres
+ENV DATABASE_PORT=5432
+
+EXPOSE 3000
+
+# Команда для запуска приложения
+CMD ["python", "server.py"]
